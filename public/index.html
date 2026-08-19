@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>THE RESISTANCE // Réseau Clandestin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="scanlines" aria-hidden="true"></div>
+
+<div class="app" id="app">
+
+  <!-- ===================== ÉCRAN : ACCUEIL ===================== -->
+  <section class="screen screen--home" id="screen-home" data-active="true">
+    <div class="brand">
+      <div class="brand__eyebrow">RÉSEAU // CLANDESTIN</div>
+      <h1 class="brand__title">THE <span>RESISTANCE</span></h1>
+      <p class="brand__tagline">Cinq missions. Deux camps. Une seule identité secrète.</p>
+    </div>
+
+    <div class="panel panel--home">
+      <label class="field">
+        <span class="field__label">Nom de code (pseudo)</span>
+        <input id="input-name" type="text" maxlength="20" placeholder="ex : FALCON" autocomplete="off" />
+      </label>
+
+      <div class="home-actions">
+        <div class="home-actions__col">
+          <button class="btn btn--primary" id="btn-create">Créer une Room</button>
+        </div>
+        <div class="home-actions__divider"><span>OU</span></div>
+        <div class="home-actions__col home-actions__col--join">
+          <input id="input-code" type="text" maxlength="4" placeholder="CODE" class="input-code" autocomplete="off" />
+          <button class="btn btn--outline" id="btn-join">Rejoindre</button>
+        </div>
+      </div>
+      <p class="hint">4 à 10 agents requis pour lancer une opération (5 conseillé).</p>
+    </div>
+  </section>
+
+  <!-- ===================== ÉCRAN : LOBBY ===================== -->
+  <section class="screen screen--lobby" id="screen-lobby">
+    <header class="topbar">
+      <div class="topbar__room">
+        <span class="topbar__label">ROOM</span>
+        <span class="topbar__code" id="lobby-code">----</span>
+        <button class="btn-icon" id="btn-copy-code" title="Copier le code">⧉</button>
+      </div>
+      <button class="btn btn--ghost btn--small" id="btn-leave-lobby">Quitter</button>
+    </header>
+
+    <div class="panel panel--lobby">
+      <h2 class="panel__title">Agents connectés</h2>
+      <ul class="player-list" id="lobby-player-list"></ul>
+      <p class="lobby-status" id="lobby-status">En attente d'agents supplémentaires…</p>
+      <button class="btn btn--primary btn--large" id="btn-start-game" disabled>Lancer l'opération</button>
+      <p class="hint hint--host" id="host-only-msg">Seul le créateur de la Room peut lancer la partie.</p>
+    </div>
+  </section>
+
+  <!-- ===================== ÉCRAN : PARTIE ===================== -->
+  <section class="screen screen--game" id="screen-game">
+    <header class="topbar">
+      <div class="topbar__room">
+        <span class="topbar__label">ROOM</span>
+        <span class="topbar__code" id="game-code">----</span>
+      </div>
+      <div class="mission-track" id="mission-track"></div>
+      <button class="btn-icon" id="btn-toggle-log" title="Journal">☰</button>
+    </header>
+
+    <div class="game-layout">
+      <!-- Colonne agents -->
+      <aside class="panel panel--roster">
+        <h2 class="panel__title">Agents</h2>
+        <ul class="player-list player-list--game" id="game-player-list"></ul>
+        <div class="my-role" id="my-role-box">
+          <span class="my-role__label">Votre identité</span>
+          <span class="my-role__badge" id="my-role-badge">—</span>
+          <div class="my-role__mates" id="my-role-mates"></div>
+        </div>
+      </aside>
+
+      <!-- Colonne action principale -->
+      <main class="panel panel--main" id="main-panel">
+        <!-- rempli dynamiquement par client.js selon la phase -->
+      </main>
+    </div>
+
+    <!-- Journal des événements -->
+    <aside class="log-drawer" id="log-drawer">
+      <div class="log-drawer__header">
+        <span>JOURNAL D'OPÉRATION</span>
+        <button class="btn-icon" id="btn-close-log">✕</button>
+      </div>
+      <div class="log-drawer__content" id="log-content"></div>
+    </aside>
+  </section>
+
+  <!-- ===================== ÉCRAN : FIN DE PARTIE ===================== -->
+  <section class="screen screen--end" id="screen-end">
+    <div class="end-card" id="end-card">
+      <div class="end-card__flag" id="end-card-flag">VICTOIRE</div>
+      <h1 class="end-card__title" id="end-title">—</h1>
+      <p class="end-card__reason" id="end-reason">—</p>
+
+      <div class="end-recap" id="end-recap"></div>
+
+      <div class="end-actions">
+        <button class="btn btn--primary" id="btn-back-lobby">Retour au Lobby</button>
+        <p class="hint" id="end-host-hint">En attente de l'hôte…</p>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ===================== MODALE : RÉVÉLATION DE RÔLE ===================== -->
+<div class="modal-overlay" id="role-modal-overlay">
+  <div class="modal role-modal" id="role-modal">
+    <div class="role-modal__seal">DOSSIER CONFIDENTIEL</div>
+    <h2 class="role-modal__title" id="role-modal-title">—</h2>
+    <p class="role-modal__desc" id="role-modal-desc">—</p>
+    <div class="role-modal__mates" id="role-modal-mates"></div>
+    <button class="btn btn--primary" id="btn-close-role-modal">J'ai mémorisé mon rôle</button>
+  </div>
+</div>
+
+<!-- ===================== TOAST ERREURS ===================== -->
+<div class="toast" id="toast"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
