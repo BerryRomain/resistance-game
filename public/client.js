@@ -59,6 +59,11 @@ const dom = {
   roleModalMates: el('role-modal-mates'),
   btnCloseRoleModal: el('btn-close-role-modal'),
 
+  flashOverlay: el('flash-overlay'),
+  flashIcon: el('flash-icon'),
+  flashTitle: el('flash-title'),
+  flashSub: el('flash-sub'),
+
   toast: el('toast'),
 };
 
@@ -81,6 +86,99 @@ function showToast(message) {
   dom.toast.dataset.visible = 'true';
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => { dom.toast.dataset.visible = 'false'; }, 3200);
+}
+
+// ---------------------------------------------------------------------------
+//  FLASH — mini-animations de résultat (vote d'équipe / mission)
+// ---------------------------------------------------------------------------
+function showFlash(type, icon, title, sub) {
+  clearTimeout(showFlash._t);
+  dom.flashOverlay.dataset.type = type;
+  dom.flashIcon.textContent = icon;
+  dom.flashTitle.textContent = title;
+  dom.flashSub.textContent = sub || '';
+
+  // On repart de "invisible" pour pouvoir rejouer l'animation même si un flash
+  // précédent est encore affiché (ex: enchaînement rapide de manches).
+  dom.flashOverlay.dataset.visible = 'false';
+  void dom.flashOverlay.offsetWidth; // force le reflow pour relancer l'animation CSS
+  dom.flashOverlay.dataset.visible = 'true';
+
+  showFlash._t = setTimeout(() => {
+    dom.flashOverlay.dataset.visible = 'false';
+  }, 1650);
+}
+
+/**
+ * Détecte les transitions d'état pertinentes (résolution du vote d'équipe,
+ * résolution de mission) pour déclencher un flash visuel, en plus du récap
+ * texte déjà présent dans le journal d'opération.
+ */
+function handleTransitionFlashes(state, previousState) {
+  if (!previousState) return;
+
+  // Le vote d'équipe vient d'être résolu (acceptée -> MISSION, refusée -> TEAM_SELECT)
+  if (previousState.state === 'TEAM_VOTE' && state.state !== 'TEAM_VOTE' && state.lastTeamVoteResult) {
+    const r = state.lastTeamVoteResult;
+    if (r.approved) {
+      showFlash(
+        'approved',
+        '✔',
+        'ÉQUIPE APPROUVÉE',
+        `${r.approvals}/${r.total} voix POUR — la mission ${r.round} commence`
+      );
+    } else {
+      showFlash(
+        'rejected',
+        '✘',
+        'ÉQUIPE REJETÉE',
+        `${r.approvals}/${r.total} voix POUR — proposition ${r.proposalNumber}/5`
+      );
+    }
+  }
+
+  // La mission vient d'être résolue (que la partie continue ou se termine ici)
+  if (
+    previousState.state === 'MISSION' &&
+    (state.state === 'MISSION_RESULT' || state.state === 'GAME_OVER') &&
+    state.missionHistory.length
+  ) {
+    const last = state.missionHistory[state.missionHistory.length - 1];
+    if (last.result === 'success') {
+      showFlash(
+        'success',
+        '★',
+        'MISSION RÉUSSIE',
+        `${last.fails} échec(s) sur ${last.size} votes`
+      );
+    } else {
+      showFlash(
+        'fail',
+        '☠',
+        'MISSION ÉCHOUÉE',
+        `${last.fails} échec(s) sur ${last.size} votes`
+      );
+    }
+  }
+}
+
+/** Petit encart affichant publiquement qui a voté quoi lors du dernier vote d'équipe. */
+function voteRecapHtml(state) {
+  const r = state.lastTeamVoteResult;
+  if (!r) return '';
+  return `
+    <div class="vote-recap">
+      <div class="vote-recap__title">
+        Dernier vote — Mission ${r.round}, proposition ${r.proposalNumber}/5
+        <span class="vote-recap__verdict" data-approved="${r.approved}">${r.approved ? 'APPROUVÉE' : 'REJETÉE'} (${r.approvals}/${r.total})</span>
+      </div>
+      <div class="vote-recap__list">
+        ${r.votes.map((v) => `
+          <span class="vote-recap__chip" data-vote="${v.vote}"><b>${v.vote ? '✔' : '✘'}</b> ${escapeHtml(v.name)}</span>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,6 +251,8 @@ socket.on('errorMessage', (msg) => showToast(msg));
 socket.on('roomUpdate', (state) => {
   const previousState = latestState;
   latestState = state;
+
+  handleTransitionFlashes(state, previousState);
 
   if (state.state === 'LOBBY') {
     roleModalShown = false;
@@ -284,10 +384,12 @@ function renderMainPanel(state) {
 function renderTeamSelect(state) {
   const requiredSize = state.missionSizes[state.round - 1];
   const isLeader = state.myId === state.leaderId;
+  const recap = voteRecapHtml(state);
 
   if (!isLeader) {
     const leaderName = state.players.find((p) => p.id === state.leaderId)?.name || '???';
     dom.mainPanel.innerHTML = `
+      ${recap}
       <h2 class="phase-title">Sélection de l'équipe — Mission ${state.round}</h2>
       <p class="phase-sub">Le Leader <strong>${escapeHtml(leaderName)}</strong> doit choisir ${requiredSize} agent(s) pour cette mission (proposition ${state.proposalNumber}/5).</p>
       <div class="waiting-box"><div class="spinner"></div>En attente de la proposition du Leader…</div>
@@ -296,6 +398,7 @@ function renderTeamSelect(state) {
   }
 
   dom.mainPanel.innerHTML = `
+    ${recap}
     <h2 class="phase-title">Composez l'équipe — Mission ${state.round}</h2>
     <p class="phase-sub">Sélectionnez exactement <strong>${requiredSize}</strong> agent(s) (proposition ${state.proposalNumber}/5). En cas de 5 rejets consécutifs, les Espions gagnent.</p>
     <div class="team-picker" id="team-picker"></div>
@@ -383,6 +486,7 @@ function renderMission(state) {
   }
 
   dom.mainPanel.innerHTML = `
+    ${voteRecapHtml(state)}
     <h2 class="phase-title">Mission ${state.round} en cours</h2>
     <p class="phase-sub">Équipe engagée : <strong>${teamNames.map(escapeHtml).join(', ')}</strong></p>
     ${actionHtml}

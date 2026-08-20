@@ -194,16 +194,24 @@ input[type="text"]::placeholder { color: var(--text-faint); }
 
 .home-actions {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
   margin: 6px 0 4px;
 }
-.home-actions__col { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-.home-actions__col--join { flex-direction: row; }
+/* min-width:0 permet aux colonnes de vraiment rétrécir sous la largeur de leur
+   contenu (comportement flexbox par défaut = min-width:auto, qui forçait le
+   bloc CODE + REJOINDRE à déborder du panneau plutôt qu'à s'y contraindre). */
+.home-actions__col { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.home-actions__col--join { flex-direction: row; flex-wrap: wrap; align-items: center; }
+/* Le bouton Rejoindre passe sous le champ CODE dès qu'il n'y a plus la place
+   de tenir sur la même ligne, au lieu de sortir du cadre. */
+.home-actions__col--join .btn { flex: 1 1 100%; }
+.home-actions .btn { white-space: normal; text-align: center; }
 .home-actions__divider {
   color: var(--text-faint);
   font-size: 11px;
   letter-spacing: 0.1em;
+  padding-top: 12px;
 }
 .input-code {
   text-transform: uppercase;
@@ -569,6 +577,166 @@ input[type="text"]::placeholder { color: var(--text-faint); }
   to { opacity: 1; transform: scale(1); }
 }
 
+/* ---------- Récapitulatif public du dernier vote d'équipe ---------- */
+.vote-recap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-alt);
+  padding: 14px 16px;
+  animation: card-in 0.35s ease both;
+}
+.vote-recap__title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vote-recap__title .vote-recap__verdict {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+}
+.vote-recap__verdict[data-approved="true"] { background: var(--green-dim); color: #b7f0d6; }
+.vote-recap__verdict[data-approved="false"] { background: var(--red-dim); color: #ffc2c6; }
+.vote-recap__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vote-recap__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  animation: card-in 0.3s ease both;
+}
+.vote-recap__chip[data-vote="true"] { border-color: var(--green); color: #b7f0d6; }
+.vote-recap__chip[data-vote="false"] { border-color: var(--red); color: #ffc2c6; }
+.vote-recap__chip b { font-family: var(--font-display); }
+
+/* ============================================================================
+   FLASH — MINI-ANIMATIONS DE RÉSULTAT (vote d'équipe / mission)
+   ========================================================================== */
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 6, 10, 0.75);
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.flash-overlay[data-visible="true"] {
+  opacity: 1;
+  animation: flash-bg-flicker 1.6s ease both;
+}
+@keyframes flash-bg-flicker {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.flash-card {
+  position: relative;
+  text-align: center;
+  padding: 20px;
+  opacity: 0;
+  transform: scale(0.6) translateY(10px);
+}
+.flash-overlay[data-visible="true"] .flash-card {
+  animation: flash-card-pop 1.6s cubic-bezier(.2, .9, .25, 1) both;
+}
+@keyframes flash-card-pop {
+  0% { opacity: 0; transform: scale(0.5) translateY(14px) rotate(-4deg); }
+  14% { opacity: 1; transform: scale(1.1) translateY(0) rotate(2deg); }
+  24% { transform: scale(1) rotate(0deg); }
+  82% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
+
+.flash-rays {
+  position: absolute;
+  inset: -140px;
+  z-index: -1;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+.flash-overlay[data-type="approved"] .flash-rays,
+.flash-overlay[data-type="success"] .flash-rays {
+  background: radial-gradient(circle, rgba(79,178,134,0.35) 0%, transparent 65%);
+}
+.flash-overlay[data-type="rejected"] .flash-rays,
+.flash-overlay[data-type="fail"] .flash-rays {
+  background: radial-gradient(circle, rgba(230,57,70,0.35) 0%, transparent 65%);
+}
+
+.flash-icon {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  border: 3px solid;
+  line-height: 1;
+}
+.flash-overlay[data-type="approved"] .flash-icon,
+.flash-overlay[data-type="success"] .flash-icon {
+  border-color: var(--green);
+  color: #b7f0d6;
+  background: var(--green-dim);
+  box-shadow: 0 0 46px rgba(79, 178, 134, 0.55);
+}
+.flash-overlay[data-type="rejected"] .flash-icon,
+.flash-overlay[data-type="fail"] .flash-icon {
+  border-color: var(--red);
+  color: #ffc2c6;
+  background: var(--red-dim);
+  box-shadow: 0 0 46px var(--red-glow);
+}
+
+.flash-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.flash-overlay[data-type="approved"] .flash-title,
+.flash-overlay[data-type="success"] .flash-title {
+  color: #b7f0d6;
+  text-shadow: 0 0 20px rgba(79, 178, 134, 0.65);
+}
+.flash-overlay[data-type="rejected"] .flash-title,
+.flash-overlay[data-type="fail"] .flash-title {
+  color: #ffc2c6;
+  text-shadow: 0 0 20px var(--red-glow);
+}
+.flash-sub {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 .mission-team-recap {
   display: flex;
   flex-wrap: wrap;
@@ -770,6 +938,8 @@ input[type="text"]::placeholder { color: var(--text-faint); }
   .home-actions__divider { text-align: center; }
   .home-actions__col--join { flex-direction: row; }
   .vote-choice { flex-direction: column; }
+  .flash-icon { width: 74px; height: 74px; font-size: 34px; }
+  .flash-title { font-size: 20px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

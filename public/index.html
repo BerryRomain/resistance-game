@@ -17,7 +17,7 @@
   <!-- ===================== ÉCRAN : ACCUEIL ===================== -->
   <section class="screen screen--home" id="screen-home" data-active="true">
     <div class="brand">
-      <div class="brand__eyebrow">RÉSEAU // CLANDESTIN</div>
+      <div class="brand__eyebrow">By CDC</div>
       <h1 class="brand__title">THE <span>RESISTANCE</span></h1>
       <p class="brand__tagline">Cinq missions. Deux camps. Une seule identité secrète.</p>
     </div>
@@ -25,7 +25,7 @@
     <div class="panel panel--home">
       <label class="field">
         <span class="field__label">Nom de code (pseudo)</span>
-        <input id="input-name" type="text" maxlength="20" placeholder="ex : FALCON" autocomplete="off" />
+        <input id="input-name" type="text" maxlength="20" placeholder="ex : TripleT" autocomplete="off" />
       </label>
 
       <div class="home-actions">
@@ -38,7 +38,7 @@
           <button class="btn btn--outline" id="btn-join">Rejoindre</button>
         </div>
       </div>
-      <p class="hint">4 à 10 agents requis pour lancer une opération (5 conseillé).</p>
+      <p class="hint">5 à 10 agents requis pour lancer une opération.</p>
     </div>
   </section>
 
@@ -127,6 +127,16 @@
     <p class="role-modal__desc" id="role-modal-desc">—</p>
     <div class="role-modal__mates" id="role-modal-mates"></div>
     <button class="btn btn--primary" id="btn-close-role-modal">J'ai mémorisé mon rôle</button>
+  </div>
+</div>
+
+<!-- ===================== FLASH : RÉSULTAT VOTE / MISSION ===================== -->
+<div class="flash-overlay" id="flash-overlay" aria-hidden="true">
+  <div class="flash-card">
+    <div class="flash-rays" id="flash-rays"></div>
+    <div class="flash-icon" id="flash-icon">✔</div>
+    <div class="flash-title" id="flash-title">—</div>
+    <div class="flash-sub" id="flash-sub"></div>
   </div>
 </div>
 

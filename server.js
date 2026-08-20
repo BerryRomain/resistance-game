@@ -66,6 +66,7 @@ function createRoom(hostSocketId, hostName) {
     missionVotes: {},    // socketId -> 'success'/'fail'
     missionHistory: [],  // [{ round, team:[names], result:'success'/'fail', fails, approvedBy, rejectedProposals }]
     resultLog: [],       // journal texte affiché à tous
+    lastTeamVoteResult: null, // snapshot public du dernier vote d'équipe (qui a voté quoi)
     winner: null,        // 'resistance' | 'spy'
     winReason: '',
   };
@@ -125,6 +126,7 @@ function buildStateForPlayer(room, socketId) {
     hasVotedMission: Object.prototype.hasOwnProperty.call(room.missionVotes, socketId),
     missionHistory: room.missionHistory,
     resultLog: room.resultLog,
+    lastTeamVoteResult: room.lastTeamVoteResult,
     winner: room.winner,
     winReason: room.winReason,
     isOnMission: room.currentTeam.includes(socketId),
@@ -165,6 +167,7 @@ function startGame(room) {
   room.missionVotes = {};
   room.missionHistory = [];
   room.resultLog = [];
+  room.lastTeamVoteResult = null;
   room.winner = null;
   room.winReason = '';
 
@@ -196,6 +199,19 @@ function resolveTeamVote(room) {
 
   const detail = room.players.map((p) => `${p.name}: ${room.teamVotes[p.id] ? 'POUR' : 'CONTRE'}`).join(', ');
   log(room, `Vote d'équipe (proposition ${room.proposalNumber}/${MAX_REJECTED_PROPOSALS}) — ${detail}`);
+
+  // Snapshot public du vote d'équipe : dans les règles officielles, ce vote n'est
+  // PAS secret (contrairement au vote de mission). On le garde en mémoire pour que
+  // le client puisse afficher qui a voté quoi, indépendamment du journal texte.
+  room.lastTeamVoteResult = {
+    round: room.round,
+    proposalNumber: room.proposalNumber,
+    team: room.currentTeam.map((id) => getPlayer(room, id).name),
+    approved,
+    approvals,
+    total,
+    votes: room.players.map((p) => ({ name: p.name, vote: !!room.teamVotes[p.id] })),
+  };
 
   if (approved) {
     log(room, `Équipe APPROUVÉE (${approvals}/${total}). La mission ${room.round} commence.`);
@@ -410,6 +426,7 @@ io.on('connection', (socket) => {
     room.missionVotes = {};
     room.missionHistory = [];
     room.resultLog = [];
+    room.lastTeamVoteResult = null;
     room.winner = null;
     room.winReason = '';
     broadcastRoom(room);
